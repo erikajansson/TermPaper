@@ -9,7 +9,7 @@
 
 %     Output: L         ... right hand side
 
-function L = rhs2d(vertices,FHandle,varargin)
+function L = rhs2d(vertices,u0)
   
   % initialize constants
   n = size(vertices,1);
@@ -44,7 +44,7 @@ function L = rhs2d(vertices,FHandle,varargin)
           w = kron(wg,wg);
           
           % compute load data
-          FVal = FHandle(xj,xi,varargin{:});
+          FVal = u0(xj,xi);
           
           % compute element load vector
           Lloc(1,1) = sum(w.*FVal.*N(:,1))*hi*hj/4;
