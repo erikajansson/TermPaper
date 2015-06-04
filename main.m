@@ -55,8 +55,8 @@ K = 1;
         %  Compute Stiffness Matrix
         %------------------------------------------------------------------
 
-        %fct = @(x1,x2) (max(K - min(x1,x2),0));
-        fct = @(x1,x2) (max(0,a*exp(x1)-b*exp(x2)));
+        fct = @(x1,x2) (max(K - min(exp(x1),exp(x2)),0));
+        %fct = @(x1,x2) (max(0,a*exp(x1)-b*exp(x2)));
         %u0 = fct(X1,X2);
         f = rhs2d(x,fct);          
         
@@ -67,7 +67,11 @@ K = 1;
         K = 10;
         S1 = reshape(S1,n,n); 
         S2 = reshape(S2,n,n);
-        u0 = max(a*S1-b*S2,0);
+        u0 = max(K - min(S1,S2),0);
+        %fct(x,x);
+        %size(u0)
+%        u0 = reshape(u0,n,n);
+%        max(a*S1-b*S2,0);
                 
         s = 1;
                 
@@ -82,7 +86,8 @@ K = 1;
         I2 = (abs(S2(:,2)-K) < K/2);
         S1 = S1(I2,I1); 
         S2 = S2(I2,I1); 
-        u = u(I2,I1); u0 = max(a*S1-b*S2,0);
+        u = u(I2,I1); 
+        %u0 = max(a*S1-b*S2,0);
         % compute L_infty-error 
         exact = bs_exchange([S1(:) S2(:)],T,sigma,rho,a,b); 
         errinf(j) = max(exact - u(:));
@@ -96,79 +101,23 @@ K = 1;
 %  Postprocessing
 %--------------------------------------------------------------------------
 
-% plot error with respect to h
-H = 2.^(-L-1)';
-figure(1)
-h = axes;
-loglog(H,err,'bx-');
-hold on
-loglog(H,errinf,'rx-');
-hold on
-p = polyfit(log(H),log(err),1);
-loc = ginput(1);
-mySlope(h,loc,0,p(1),'k+-')
-legend('Exchange option','Location','NorthWest')
-title('Error with respect to h')
-
-set(h,'FontSize',14);
-axis on
-xlabel('h')
-ylabel('Linf-Error')
-hold off
-
-% plot error with respect to N
-% compare with (8.24) in the book
-N = (2.^(L'+1)).^2;
-figure(2); clf;
-h = axes;
-loglog(N,err,'bx-');
-hold on
-loglog(N,errinf,'rx-');
-hold on
-p = polyfit(log(N),log(err),1);
-loc = ginput(1);
-mySlope(h,loc,1,p(1),'k+-')
-legend('Exchange option','Location','NorthEast')
-title('Error with respect to N')
-
-set(h,'FontSize',14);
-axis on
-xlabel('N')
-ylabel('Linf-Error')
-hold off
-
-exact = bs_exchange([S1(:) S2(:)],T,sigma,rho,a,b);
-exact = reshape(exact,length(S1),length(S2));
 
 % plot option price
 figure(3)
-subplot(2,1,1)
+%subplot(2,1,1)
 surf(S1,S2,u)
 hold on
-mesh(S1,S2,u0)
+mesh(S1,S2,u0(I1,I2))
 hold off
 box on
 grid on
 
-set(h,'FontSize',14)
+%set(h,'FontSize',14)
 axis on
 xlabel('s_1')
 ylabel('s_2')
 zlabel('FE Option price','FontSize',14)
 
-subplot(2,1,2)
-surf(S1,S2,exact)
-hold on
-mesh(S1,S2,u0)
-hold off
-box on
-grid on
-
-set(h,'FontSize',14)
-axis on
-xlabel('s_1')
-ylabel('s_2')
-zlabel('Exact Option price','FontSize',14)
 end
 
 
