@@ -1,5 +1,5 @@
 % Input: u0: payoff function for different values of S1 and S2
-function u = PDESolver(x, n, T, h, Q, mu, r, f)
+function u = PDESolver(x, n, T, h, Q, mu, r, f,nb)
 
 beta = 1;
 
@@ -23,7 +23,11 @@ beta = 1;
                 
         % projection for payoff
         %f = rhs2d(x,u0);
-        u0 = Am\f;                        
+        if (nb == 1)
+        u0 = Am\f;   
+        else
+        u0 = f;
+        end
                                                       
         %------------------------------------------------------------------
         %  Solver
@@ -37,7 +41,7 @@ beta = 1;
         % full grid
         u = u0; 
         maxiter = 0;
-        for i=1:m 
+        for i=1:m
             B1 = Am-(1-theta)*(t(i+1)-t(i))*A;
             B2 = Am+theta*(t(i+1)-t(i))*A;          
             [u,flag,res,iter] = gmres(B2,B1*u,[],1.0e-7,min([200 size(B2,1)]),[],[],u);
@@ -46,7 +50,7 @@ beta = 1;
         end
 
         %fprintf('Maximum of %2d GMRES iterations\n',maxiter)
-        u = reshape(u,n,n);
+       % u = reshape(u,n,n);
 
 u;
 end

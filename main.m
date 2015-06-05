@@ -9,7 +9,6 @@ tic
 %--------------------------------------------------------------------------
 %  Set Parameters 
 %--------------------------------------------------------------------------
-
 L = 4:6;                    % number of levels  
 R = 5;                      % domain (-R,R)^2
 T = 1;                      % maturity
@@ -31,8 +30,7 @@ K = 1;
     errinf = zeros(length(L),1);
     for j=1:length(L)
     
-        fprintf('Level L = %d\n',L(j))
-    
+        fprintf('Level L = %d\n',L(j))    
         %------------------------------------------------------------------
         %  Discretization
         %------------------------------------------------------------------
@@ -56,22 +54,18 @@ K = 1;
         %------------------------------------------------------------------
 
         fct = @(x1,x2) (max(K - min(exp(x1),exp(x2)),0));
-        %fct = @(x1,x2) (max(0,a*exp(x1)-b*exp(x2)));
-        %u0 = fct(X1,X2);
+        fv = fct(X1,X1);
         f = rhs2d(x,fct);          
-        
         % compute 1D matrices in hat basis
-        u = PDESolver(x, n, T, h, Q, mu, r, f);       
+        u1 = PDESolver(x, n, T, h, Q, mu, r, f,1);
+        u = PDESolver(x, n, T, h, Q, mu, r, u1,2);
 
+        u = reshape(u,n,n);
+        u1 = reshape(u1,n,n);
         % area of interest
-        K = 10;
         S1 = reshape(S1,n,n); 
         S2 = reshape(S2,n,n);
         u0 = max(K - min(S1,S2),0);
-        %fct(x,x);
-        %size(u0)
-%        u0 = reshape(u0,n,n);
-%        max(a*S1-b*S2,0);
                 
         s = 1;
                 
@@ -87,7 +81,6 @@ K = 1;
         S1 = S1(I2,I1); 
         S2 = S2(I2,I1); 
         u = u(I2,I1); 
-        %u0 = max(a*S1-b*S2,0);
         % compute L_infty-error 
         exact = bs_exchange([S1(:) S2(:)],T,sigma,rho,a,b); 
         errinf(j) = max(exact - u(:));
@@ -101,13 +94,12 @@ K = 1;
 %  Postprocessing
 %--------------------------------------------------------------------------
 
-
 % plot option price
 figure(3)
 %subplot(2,1,1)
-surf(S1,S2,u)
+surf(S1,S2,-u)
 hold on
-mesh(S1,S2,u0(I1,I2))
+mesh(S1,S2,-u1(I1,I2))
 hold off
 box on
 grid on
@@ -119,9 +111,3 @@ ylabel('s_2')
 zlabel('FE Option price','FontSize',14)
 
 end
-
-
-
-
-
-

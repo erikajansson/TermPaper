@@ -12,7 +12,7 @@
 function L = rhs2d(vertices,u0)
   
   % initialize constants
-  n = size(vertices,1);
+  n = size(vertices,1); % number of grid points
   
   % preallocate memory
   L = zeros(n,n);
@@ -20,19 +20,17 @@ function L = rhs2d(vertices,u0)
   
   % compute Gauss points
   [xg,wg] = gauleg(3);
-  e = ones(length(wg),1);
+  e = ones(length(wg),1); %  [1 1 1]
   
   % precompute shape functions
-  N = shap(xg);
+  N = shap(xg); % Shape function values at gauss points
   
   % assemble element contributions
-  vidxi = [1 2];
+  vidxi = [1 2]; % Element to which to add contributions (indexes)
   for i = 1:n-1
       vidxj = [1 2];
       for j = 1:n-1
-
-          % compute element mapping
-          
+          % compute element mapping          
           a = vertices(vidxi(1));
           hi = vertices(vidxi(2))-a;
           xi = a + (xg+1)*hi/2;
@@ -45,7 +43,7 @@ function L = rhs2d(vertices,u0)
           
           % compute load data
           FVal = u0(xj,xi);
-          
+                    
           % compute element load vector
           Lloc(1,1) = sum(w.*FVal.*N(:,1))*hi*hj/4;
           Lloc(2,1) = sum(w.*FVal.*N(:,2))*hi*hj/4; 
