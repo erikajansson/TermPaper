@@ -1,11 +1,14 @@
-% Input: u0: payoff function for different values of S1 and S2
+% Input: 
+% u0: payoff function for different values of S1 and S2
+% h: grid size in space
+% nb == 1: use projection for payoff!!!
 function u = PDESolver(x, n, T, h, Q, mu, r, f,nb)
 
 beta = 1;
 
         m = ceil(T/h);                % time points
         dt = T/m;                     % time steps
-        
+        dof = 2:n-1;
         %------------------------------------------------------------------
         %  Compute Stiffness Matrix
         %------------------------------------------------------------------
@@ -41,11 +44,18 @@ beta = 1;
         % full grid
         u = u0; 
         maxiter = 0;
-        for i=1:m
+        for i=1:m            
             B1 = Am-(1-theta)*(t(i+1)-t(i))*A;
             B2 = Am+theta*(t(i+1)-t(i))*A;          
+%            u(dof) = B2(dof,dof)\(B1(dof,dof)*u(dof));
+            u = reshape(u,n,n);
+            u(1,:) = 0;
+            u(n,:) = 0;
+            u(:,1) = 0;
+            u(:,n) = 0;            
+            u = u(:);
             [u,flag,res,iter] = gmres(B2,B1*u,[],1.0e-7,min([200 size(B2,1)]),[],[],u);
-            maxiter = max([maxiter iter]);
+%            maxiter = max([maxiter iter]);
             %u=B2/B1*u;
         end
 
