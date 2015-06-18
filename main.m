@@ -11,18 +11,18 @@ tic
 %--------------------------------------------------------------------------
 L = 5;                       % number of levels
 R = 2;                       % domain (-R,R)^2
-TC = [1,2];                  % Callable dates (yearly)
+TC = [3,2,1];                % Callable dates (yearly)
 TCoupon = [0.5,1,1.5,2,2.5]; % Coupon dates (every 6 months)
-T = 3;                       % maturity
+T = 4;                       % maturity
 a = 1;                       % constant in payoff
 b = 2;                       % constant in payoff
-r = 0;                       % interest rates
-sigma = [0.4;0.1];           % volatilities
-rho = -0.6;                  % correlation
+r = -0.001;                  % interest rates
+sigma = [0.4;0.2];           % volatilities
+rho = 0.8;                   % correlation
 K = 1;                       % strike
-Notional = 1;
-B = 0.8;                     % barrier level
-Coupon = 0.05;               % Fixed coupon
+N = 1;                       % Notional
+B = 0.5;                     % barrier level
+C = 0.1;                     % Fixed coupon
 
 Q = zeros(2,2);
 Q(1,1) = sigma(1)^2;
@@ -31,10 +31,10 @@ Q(2,1) = Q(1,2);
 Q(2,2) = sigma(2)^2;
 mu = [Q(1,1)/2; Q(2,2)] -r;
       
-        fprintf('Level L = %d\n',L)    
-        %------------------------------------------------------------------
-        %  Discretization
-        %------------------------------------------------------------------
+fprintf('Level L = %d\n',L)
+%------------------------------------------------------------------
+%  Discretization
+%------------------------------------------------------------------
                 
         % 1d mesh using barrier
         nb = 2.^(L+1)-1;                 % number of nodes using barrier
@@ -63,6 +63,30 @@ mu = [Q(1,1)/2; Q(2,2)] -r;
         SB1 = exp(XB1);
 	    SB2 = exp(XB2);
         
+        % area of interest
+        S1 = reshape(S1,n,n); 
+        S2 = reshape(S2,n,n);
+        u0 = max(K - min(S1,S2),0);
+                
+        s = 1;
+                
+        s1 = find(S1(1,:) == 1);
+        s2 = find(S2(:,2) == 1);
+        
+        % exact = bs_exchange([s s],T,sigma,rho,a,b);
+        % compute error at (1,1)
+        % err(j) = exact - u(s1,s2);
+                
+        I1 = (abs(S1(1,:)-K) < K/2);
+        I2 = (abs(S2(:,2)-K) < K/2);
+        S1 = S1(I1,I1); 
+        S2 = S2(I1,I1); 
+%        u = u(I2,I1); 
+        IB1 = (abs(SB1(1,:)-K) < K/2);
+        IB2 = (abs(SB2(:,2)-K) < K/2);
+        SB1 = SB1(IB2,IB1);
+        SB2 = SB2(IB2,IB1);        
+        
         %------------------------------------------------------------------
         %  Compute Stiffness Matrix
         %------------------------------------------------------------------
@@ -77,26 +101,31 @@ mu = [Q(1,1)/2; Q(2,2)] -r;
         % TODO: Extend to non-constant correlation!
         % TODO: Extend to include correlation between bond and option part!
         % TODO: Extend to include stochastic interest rates!!!
-        % TODO: Extend to include counterparty credit risk!!!!   
-        
-        % TODO: Input: call-dates,
-        
-        % TODO: Add barrier !!!    
-        % TODO: What should the barrier value be?        
-              
+        % TODO: Extend to include counterparty credit risk!!!!           
+                           
         % First callable date
         
-        pDO = PDESolver(xb, nb, TC(1), h, Q, mu, r, fb,1);
-        pDO = reshape(pDO,nb,nb);
-        p = PDESolver(x, n, TC(1), h, Q, mu, r, f,1);
+        % put option: in case barrier has already been hit
+        
+        dt = T - TC(1);
+        p = PDESolver(x, n, dt, h, Q, mu, r, f,1);
         p = reshape(p,n,n);
+        pDO = PDESolver(xb, nb, dt, h, Q, mu, r, fb,1);
+        pDO = reshape(pDO,nb,nb);
         pDI = p;
         ind = (n-nb+1):n;
-        size(pDI(ind,ind))
-        size(pDO)
+        % DI option: in case barrier has not already been hit
         pDI(ind,ind) = pDI(ind,ind) - pDO;
-%       p - pDI
-                
+
+        BRChitnocall = C + exp(-r*dt)*(C+N) - p;
+        BRChit = min(BRChitnocall, C + N);
+        Diffhit = (BRChit - BRChitnocall);
+        BRCnohitnocall = C - pDI + exp(-r*dt)*(C+N);
+        BRCnohit = min(BRCnohitnocall,C+N);
+        Diffnohit = BRCnohit - BRCnohitnocall;
+        BRChit0 = BRChit;
+        BRCnohit0 = BRCnohit;
+        
         % u1 is the do-put option
         % we are looking for the di-put option
 
@@ -122,42 +151,29 @@ mu = [Q(1,1)/2; Q(2,2)] -r;
         
         % Further callable dates
 %        u2 = u1;
-%        nbOfCallableDates = length(TC);
-%        for (i = 2:nbOfCallableDates)        
-%          u2 = PDESolver(x, n, TC(i-1) - TC(i), h, Q, mu, r, u2, 2);           
-%        end
-        
-        % TODO: Add bond part !!!!
-        
-        % TODO: Time between dates might be different !!!
-        
-%        u = PDESolver(x, n, T - TC(nbOfCallableDates), h, Q, mu, r, u2,2);        
+        nbOfCallableDates = length(TC);
+        for (i = 2:nbOfCallableDates)        
+            dt = TC(i-1) - TC(i);
+            disc = exp(-r*dt);
+            % for BRC hit we need to calc vanilla & di
+            p = PDESolver(x, n, dt, h, Q, mu, r, BRChit, 2);            
+            p = reshape(p,n,n);
+            do = PDESolver(xb, nb, dt, h, Q, mu, r, BRChit(ind,ind), 2);
+            do = reshape(do,nb,nb);
+            di = p;
+            di(ind,ind) = di(ind,ind) - do;
+            % for BRC no hit we need to calc do
+            do = zeros(n,n);            
+            don = PDESolver(xb, nb, dt, h, Q, mu, r, BRCnohit(ind,ind), 2);
+            do(ind,ind) = reshape(don,nb,nb);            
+            
+            BRCnohit = min(C + di + do, C+N);
+            
+            BRChit = min(C + p, C + N);
+            
+        end
+              
 
-%        u = reshape(u,n,n);
-%        u1 = reshape(u1,n,n);
-        % area of interest
-        S1 = reshape(S1,n,n); 
-        S2 = reshape(S2,n,n);
-        u0 = max(K - min(S1,S2),0);
-                
-        s = 1;
-                
-        s1 = find(S1(1,:) == 1);
-        s2 = find(S2(:,2) == 1);
-        
-        % exact = bs_exchange([s s],T,sigma,rho,a,b);
-        % compute error at (1,1)
-        % err(j) = exact - u(s1,s2);
-                
-        I1 = (abs(S1(1,:)-K) < K/2);
-        I2 = (abs(S2(:,2)-K) < K/2);
-        S1 = S1(I2,I1); 
-        S2 = S2(I2,I1); 
-%        u = u(I2,I1); 
-        IB1 = (abs(SB1(1,:)-K) < K/2);
-        IB2 = (abs(SB2(:,2)-K) < K/2);
-        SB1 = SB1(IB2,IB1);
-        SB2 = SB2(IB2,IB1);
 
     % elapsed time
     toc 
@@ -170,15 +186,18 @@ mu = [Q(1,1)/2; Q(2,2)] -r;
 figure(3)
 %subplot(2,1,1)
 %pDO = reshape(pDO,nb,nb);
-surf(S1,S2,pDI(I1,I2))
+surf(S1,S2,BRCnohit(I1,I2))
 hold on
 %p = reshape(p,n,n);
-%figure(4)
 
-mesh(S1,S2,p(I1,I2))
+mesh(S1,S2,BRCnohit0(I1,I2))
 hold off
 box on
 grid on
+figure(4)
+surf(S1,S2,Diffnohit(I1,I2))
+mesh(S1,S2,Diffhit(I1,I2))
+
 
 %set(h,'FontSize',14)
 axis on
