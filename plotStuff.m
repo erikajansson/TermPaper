@@ -1,5 +1,15 @@
 % plot option price
 function plotStuff(i, S1, S2, I1,I2, BRCnohitnocall, BRCnohit, BRChitnocall, BRChit, Diffnohit, Diffhit)
+
+i1 = find(S1(1,:) >= 1, 1,'first');
+i2 = find(S2(:,2) >= 1, 1,'first');
+
+'Value of BRC (no hit):'
+BRCnohit(i1,i2)
+
+'Value of BRC (hit):'
+BRChit(i1,i2)   
+
 figure(i)
 subplot(3,1,1)
 surf(S1,S2,BRCnohitnocall(I1,I2))

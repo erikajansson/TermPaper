@@ -11,17 +11,17 @@ tic
 %--------------------------------------------------------------------------
 L = 5;                       % number of levels
 R = 2;                       % domain (-R,R)^2
-TC = [3,2,1];                % Callable dates (yearly)
+TC = [4,3,2,1];              % Callable dates (yearly)
 TCoupon = [0.5,1,1.5,2,2.5]; % Coupon dates (every 6 months)
-T = 4;                       % maturity
+T = 5;                       % maturity
 a = 1;                       % constant in payoff
 b = 2;                       % constant in payoff
-r = -0.001;                  % interest rates
+r = 0.001;                   % interest rates
 sigma = [0.4;0.2];           % volatilities
 rho = 0.2;                   % correlation
 K = 1;                       % strike
 N = 1;                       % Notional
-B = 0.8;                     % barrier level
+B = 0.7;                     % barrier level
 C = 0.1;                     % Fixed coupon
 
 Q = zeros(2,2);
@@ -76,7 +76,7 @@ I1 = (abs(S1(1,:)-K) < K/2);
 I2 = (abs(S2(:,2)-K) < K/2);
 S1 = S1(I1,I1);
 S2 = S2(I1,I1);
-        
+
 %------------------------------------------------------------------
 %  RHS
 %------------------------------------------------------------------
@@ -151,7 +151,7 @@ BRCnohit = min(BRCnohitnocall,C+N);     % Bigger than if barrier already hit, mo
 
 Diffhit = (BRChit - BRChitnocall);
 Diffnohit = BRCnohit - BRCnohitnocall; % More often different from 0      
-                
+% For each value of S1 we (might get a value of S2 for which it's optimal to call)                
                        
 plotStuff(1,S1, S2, I1,I2,BRCnohitnocall, BRCnohit, BRChitnocall, BRChit, Diffnohit, Diffhit)
 
@@ -160,9 +160,9 @@ nbOfCallableDates = length(TC);
 for (i = 2:nbOfCallableDates)        
 
     firstTime = 2;            
-    InitialCondHit = BRChit;
-    InitialCondHitB = BRChit(ind,ind);
-    InitialCondNoHit = BRCnohit(ind,ind);
+    InitialCondHit = BRChit - (N + C);
+    InitialCondHitB = BRChit(ind,ind) - (N + C);
+    InitialCondNoHit = BRCnohit(ind,ind) - (N + C);
     dt = TC(i-1) - TC(i);
 
     % Vanilla put (Hit)
@@ -182,22 +182,31 @@ for (i = 2:nbOfCallableDates)
     don = PDESolver(xb, nb, dt, h, Q, mu, r, InitialCondNoHit, firstTime);
     do(ind,ind) = reshape(don,nb,nb);            
 
+    
+%BRChitnocall = C + p + disc*(C + N);
+%BRChit = min(BRChitnocall, C + N);
+
+%BRCnohitnocall = C + disc*(N+C) + pDI;  % Bigger than if barrier already hit % (do = disc*(C+N))
+%BRCnohit = min(BRCnohitnocall,C+N);     % Bigger than if barrier already hit, more often chose to call (=N+C, value different from BRCnohitnocall)
+
+%Diffhit = (BRChit - BRChitnocall);
+%Diffnohit = BRCnohit - BRCnohitnocall; % More often different from 0      
+    
     % Down-and-in  (Hit) + Down-and-out (No hit)
-    BRCnohitnocall = C + di + do;
+    BRCnohitnocall = C + disc*(N+C)+ di;
     BRCnohit = min(BRCnohitnocall, C+N);
 
     % Vanilla (Hit)
-    BRChitnocall = C + p;
+    BRChitnocall = C + p + disc*(N+C);
     BRChit = min(BRChitnocall, C + N);
 
     Diffhit = (BRChit - BRChitnocall);
     Diffnohit = BRCnohit - BRCnohitnocall; % More often different from 0            
 
-
-    plotStuff(i,S1, S2, I1,I2,BRCnohitnocall, BRCnohit, BRChitnocall, BRChit, Diffnohit, Diffhit)
-
-
+    plotStuff(i,S1, S2, I1,I2,BRCnohitnocall, BRCnohit, BRChitnocall, BRChit, Diffnohit, Diffhit) 
+    
 end
+
 
 % elapsed time
 toc 
